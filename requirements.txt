@@ -7,4 +7,3 @@ textblob
 plotly
 openpyxl
 datetime
-os
