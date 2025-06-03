@@ -16,7 +16,7 @@ df_mission = df_mission.dropna(subset=["Statut"])
 df_mission["Statut"] = df_mission["Statut"].astype(str).str.strip().str.lower()
 
 # Parsing des dates
-for col in ["Début", "Elaboration", "Fin Prévisionnelle", "Fin Effective"]:
+for col in ["Début", "Elaboration Prévisionnelle","Elaboration Effective", "Fin Prévisionnelle", "Fin Effective"]:
     df_mission[col] = pd.to_datetime(df_mission[col], errors='coerce')
 
 # Ajout des jours de retard
@@ -57,9 +57,8 @@ with tabs[0]:
     else:
         # Réorganisation des colonnes visibles (on cache Ref à l’affichage)
         colonnes_ordre_affichage = ["Missions", "Type de Missions", "Porteurs", "Phases", "Etapes",
-                        "Livrables", "Statut", "DuréeElaboration", "DuréeCTCQ", "DuréeApprobation",
-                        "Début", "Elaboration", "CTCQ", "Conformité", "Approbation",
-                        "Fin Prévisionnelle", "Fin Effective", "Commentaires"]
+                        "Livrables","Début", "Elaboration Prévisionnelle","Elaboration Effective", "CTCQ Prévisionnelle","CTCQ Effective", "Conformité", 
+                                    "Approbation Prévisionnelle","Approbation Effective","Fin Prévisionnelle", "Fin Effective","Statut", "Commentaires"]
         
         colonnes_ordre_totale = colonnes_ordre_affichage + ["Ref"]  # Ref est gardé en interne
         df_vue = df_mission[colonnes_ordre_totale].copy()
@@ -218,18 +217,18 @@ with tabs[1]:
     st.subheader("⏱️ Retards par étape intermédiaire")
 
     # Conversion des dates au cas où
-    for col in ["Début", "Elaboration", "CTCQ", "Approbation"]:
+    for col in ["Début", "Elaboration Prévisionnelle","Elaboration Effective", "CTCQ Prévisionnelle","CTCQ Effective", "Approbation Prévisionnelle","Approbation Effective"]:
         df_mission[col] = pd.to_datetime(df_mission[col], errors='coerce')
 
     # Calcul des durées
-    df_mission["Duree_Elaboration"] = (df_mission["Elaboration"] - df_mission["Début"]).dt.days
-    df_mission["Duree_CTCQ"] = (df_mission["CTCQ"] - df_mission["Elaboration"]).dt.days
-    df_mission["Duree_Approbation"] = (df_mission["Approbation"] - df_mission["CTCQ"]).dt.days
+    df_mission["Duree_Elaboration"] = (df_mission["Elaboration Effective"] - df_mission["Début"]).dt.days
+    df_mission["Duree_CTCQ"] = (df_mission["CTCQ Effective"] - df_mission["Elaboration Effective"]).dt.days
+    df_mission["Duree_Approbation"] = (df_mission["Approbation Effective"] - df_mission["CTCQ Effective"]).dt.days
 
     # Comparaison aux seuils
-    df_mission["Retard_Elaboration"] = df_mission["Duree_Elaboration"] > df_mission["DuréeElaboration"]
-    df_mission["Retard_CTCQ"] = df_mission["Duree_CTCQ"] > df_mission["DuréeCTCQ"]
-    df_mission["Retard_Approbation"] = df_mission["Duree_Approbation"] > df_mission["DuréeApprobation"]
+    df_mission["Retard_Elaboration"] = df_mission["Elaboration Effective"] > df_mission["Elaboration Prévisionnelle"]
+    df_mission["Retard_CTCQ"] = df_mission["CTCQ Effective"] > df_mission["CTCQ Prévisionnelle"]
+    df_mission["Retard_Approbation"] = df_mission["Approbation Effective"] > df_mission["Approbation Prévisionnelle"]
 
     # Comptage des retards
     retard_intermediaire = {
@@ -418,8 +417,181 @@ with tabs[1]:
     st.subheader("📅 Diagramme de Gantt")
    
 # Onglet 3 – Suivi des missions
+
 with tabs[2]:
     st.subheader("Suivi des missions")
+
+    # Réorganisation des colonnes
+    colonnes_ord = ["Missions", "Type de Missions", "Porteurs", "Phases", "Etapes",
+                    "Livrables","Début","Elaboration Prévisionnelle","Elaboration Effective","CTCQ Prévisionnelle","CTCQ Effective","Conformité","Approbation Prévisionnelle","Approbation Effective","Fin Prévisionnelle", "Fin Effective","Statut", "Commentaires"]
+    colonnes_sel = ["Missions", "Type de Missions", "Porteurs", "Phases", "Etapes",
+                    "Livrables","Début","Elaboration Prévisionnelle","Elaboration Effective","CTCQ Prévisionnelle","CTCQ Effective","Conformité","Approbation Prévisionnelle","Approbation Effective","Fin Prévisionnelle", "Fin Effective","Statut", "Commentaires"]
+    
+    df_obs = df_mission[colonnes_ord].copy()
+
+    # Filtres
+    col1, col2 = st.columns(2)
+
+    with col1:
+        missions = df_obs["Missions"].dropna().unique().tolist()
+        missions.insert(0, "Toutes")
+        selected_mission = st.radio("Choisir une mission", missions)
+
+    with col2:
+        if selected_mission != "Toutes":
+            collaborateurs = df_obs[df_obs["Missions"] == selected_mission]["Porteurs"].dropna().unique().tolist()
+        else:
+            collaborateurs = df_obs["Porteurs"].dropna().unique().tolist()
+
+        collaborateurs.insert(0, "Tous")
+        selected_collab = st.radio("Choisir un collaborateur", collaborateurs)
+
+    # Filtrage du DataFrame
+    mission_data = df_obs.copy()
+    if selected_mission != "Toutes":
+        mission_data = mission_data[mission_data["Missions"] == selected_mission]
+    if selected_collab != "Tous":
+        mission_data = mission_data[mission_data["Porteurs"] == selected_collab]
+
+    # 🔹 Graphiques : Répartition par statut et par phase
+ 
+
+# Container pour les deux graphes côte à côte
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        # Répartition par statut
+        statut_counts = mission_data["Statut"].value_counts().reset_index()
+        statut_counts.columns = ["Statut", "Nombre"]
+        statut_counts["Pourcentage"] = 100 * statut_counts["Nombre"] / statut_counts["Nombre"].sum()
+    
+        # Définir les couleurs en fonction du statut
+        def get_statut_color(statut):
+            statut = str(statut).lower()
+            if "non entamé" in statut:
+                return "#D3D3D3"
+            elif "clôturé" in statut and "retard" not in statut:
+                return "#90EE90"
+            elif "bloqué" in statut:
+                return "#FF0000"
+            elif "en cours" in statut:
+                return "#FFA500"
+            elif "retard" in statut:
+                return "#FFFF00"
+            else:
+                return "#87CEEB"
+    
+        statut_counts["Couleur"] = statut_counts["Statut"].apply(get_statut_color)
+    
+        # Bar chart compact
+        fig1, ax1 = plt.subplots(figsize=(2, 1))  # Taille réduite
+        bars = ax1.bar(
+            statut_counts["Statut"],
+            statut_counts["Nombre"],
+            color=statut_counts["Couleur"]
+        )
+    
+        # Ajout des pourcentages
+        for bar, pct in zip(bars, statut_counts["Pourcentage"]):
+            height = bar.get_height()
+            ax1.text(
+                bar.get_x() + bar.get_width() / 2,
+                height,
+                f"{pct:.0f}%",
+                ha='center',
+                va='bottom',
+                fontsize=6
+            )
+    
+        ax1.set_title("Répartition Statut", fontsize=5)
+        ax1.set_ylabel("")
+        ax1.set_xlabel("")
+        ax1.tick_params(axis='x', labelrotation=45, labelsize=5)
+        ax1.spines[['right', 'top']].set_visible(False)
+        st.pyplot(fig1)
+                                                                                                                                                                                                                                                                                    
+    with col4:
+        # Répartition circulaire par Phase
+        phase_counts = mission_data["Phases"].value_counts()
+        fig2, ax2 = plt.subplots(figsize=(2, 1))  # Taille réduite
+        ax2.pie(
+            phase_counts,
+            labels=phase_counts.index,
+            autopct='%1.1f%%',
+            startangle=140,
+            textprops={'fontsize': 4}
+        )
+        ax2.set_title("Répartition par phases", fontsize=5)
+        st.pyplot(fig2)
+
+    # 🔸 Coloration conditionnelle du statut
+    def color_statut(val):
+        val = str(val).lower()
+        if "non entamé" in val:
+            return 'background-color: #4F4F4F; color: white'  # gris foncé
+        elif "clôturé" in val and "retard" not in val:
+            return 'background-color: #D3D3D3; color: black'  # gris clair
+        elif "bloqué" in val:
+            return 'background-color: #FF0000; color: white'  # rouge
+        elif "en cours" in val:
+            return 'background-color: #FFA500; color: black'  # orange
+        elif "retard" in val:
+            return 'background-color: #FFFF00; color: black'  # jaune
+        else:
+            return ''
+
+    # 🔸 Affichage du tableau stylisé
+    styled_df = mission_data[colonnes_sel].style.applymap(color_statut, subset=["Statut"])
+        # 🔹 KPI : Retards intermédiaires (filtrés)
+
+    # Recalcul des durées et retards sur le sous-ensemble filtré
+    df_temp = df_mission.copy()
+    df_temp["Début"] = pd.to_datetime(df_temp["Début"], errors='coerce')
+    df_temp["Elaboration Prévisionnelle"] = pd.to_datetime(df_temp["Elaboration Prévisionnelle"], errors='coerce')
+    df_temp["Elaboration Effective"] = pd.to_datetime(df_temp["Elaboration Effective"], errors='coerce')
+
+    df_temp["CTCQ Prévisionnelle"] = pd.to_datetime(df_temp["CTCQ Prévisionnelle"], errors='coerce')
+    df_temp["CTCQ Effective"] = pd.to_datetime(df_temp["CTCQ Effective"], errors='coerce')
+    df_temp["Approbation Prévisionnelle"] = pd.to_datetime(df_temp["Approbation Prévisionnelle"], errors='coerce')
+    df_temp["Approbation Effective"] = pd.to_datetime(df_temp["Approbation Effective"], errors='coerce')
+
+    df_temp["Duree_Elaboration_Eff"] = (df_temp["Elaboration Effective"] - df_temp["Début"]).dt.days
+    df_temp["Duree_Elaboration_Prév"] = (df_temp["Elaboration Prévisionnelle"] - df_temp["Début"]).dt.days
+
+    df_temp["Duree_CTCQ_Eff"] = (df_temp["CTCQ Effective"] - df_temp["Elaboration Effective"]).dt.days
+    df_temp["Duree_CTCQ_Prév"] = (df_temp["CTCQ Prévisionnelle"] - df_temp["Elaboration Effective"]).dt.days
+
+    df_temp["Duree_Approbation_Eff"] = (df_temp["Approbation Effective"] - df_temp["CTCQ Effective"]).dt.days
+    df_temp["Duree_Approbation_Prév"] = (df_temp["Approbation Prévisionnelle"] - df_temp["Approbation Effective"]).dt.days
+
+
+    df_temp["Retard_Elaboration"] = df_temp["Duree_Elaboration_Eff"] > df_temp["Duree_Elaboration_Prév"]
+    df_temp["Retard_CTCQ"] = df_temp["Duree_CTCQ_Eff"] > df_temp["Duree_CTCQ_Eff"]
+    df_temp["Retard_Approbation"] = df_temp["Duree_Approbation_Eff"] > df_temp["Duree_Approbation_Prév"]
+
+    # Application des mêmes filtres sur df_temp
+    df_retards = df_temp.copy()
+    if selected_mission != "Toutes":
+        df_retards = df_retards[df_retards["Missions"] == selected_mission]
+    if selected_collab != "Tous":
+        df_retards = df_retards[df_retards["Porteurs"] == selected_collab]
+
+    # Comptage
+    nb_elab = df_retards["Retard_Elaboration"].sum()
+    nb_ctcq = df_retards["Retard_CTCQ"].sum()
+    nb_appro = df_retards["Retard_Approbation"].sum()
+
+    total_missions = len(df_retards)
+
+    # Affichage des KPI
+    st.markdown("### 📊 Indicateurs de retards intermédiaires")
+    col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
+
+    col_kpi1.metric("⏱️ Retards_Élaboration", f"{nb_elab}", f"{nb_elab/total_missions:.0%}" if total_missions else "0%")
+    col_kpi2.metric("📄 Retards_CT/CQ", f"{nb_ctcq}", f"{nb_ctcq/total_missions:.0%}" if total_missions else "0%")
+    col_kpi3.metric("✅ Retards_Approbation", f"{nb_appro}", f"{nb_appro/total_missions:.0%}" if total_missions else "0%")
+
+    st.dataframe(styled_df, use_container_width=True)
 
   
     
