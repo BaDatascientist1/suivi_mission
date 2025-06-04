@@ -7,6 +7,7 @@ import seaborn as sns
 import os
 from openpyxl import load_workbook
 from datetime import date
+from datetime import timedelta
 
 # Chargement des données
 df_mission = pd.read_excel("dataset.xlsx", sheet_name="Sheet1")
@@ -541,7 +542,35 @@ with tabs[2]:
             return ''
 
     # 🔸 Affichage du tableau stylisé
-    styled_df = mission_data[colonnes_sel].style.applymap(color_statut, subset=["Statut"])
+        
+    
+    today = pd.Timestamp.today().normalize()
+    
+    def color_previsionnelle(row):
+        styles = {}
+        # Étapes à traiter
+        etapes = ["Elaboration", "CTCQ", "Approbation"]
+        for etape in etapes:
+            prev_col = f"{etape} Prévisionnelle"
+            eff_col = f"{etape} Effective"
+            prev_date = row.get(prev_col)
+            eff_date = row.get(eff_col)
+    
+            if pd.isna(prev_date):
+                styles[prev_col] = ''
+            elif prev_date.date() == (today + timedelta(days=1)).date():
+                styles[prev_col] = 'background-color: orange; color: black'
+            elif pd.notna(eff_date) and eff_date > prev_date:
+                styles[prev_col] = 'background-color: red; color: white'
+            else:
+                styles[prev_col] = 'background-color: lightgreen; color: black'
+        return pd.Series(styles)
+    
+    styled_df = mission_data[colonnes_sel].style\
+        .applymap(color_statut, subset=["Statut"])\
+        .apply(color_previsionnelle, axis=1)
+
+    #styled_df = mission_data[colonnes_sel].style.applymap(color_statut, subset=["Statut"])
         # 🔹 KPI : Retards intermédiaires (filtrés)
 
     # Recalcul des durées et retards sur le sous-ensemble filtré
