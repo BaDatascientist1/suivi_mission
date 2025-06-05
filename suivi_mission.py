@@ -8,11 +8,24 @@ import os
 from openpyxl import load_workbook
 from datetime import date
 from datetime import timedelta
+import unicodedata
 
 # Chargement des données
+# Chargement du fichier principal
+
 df_mission = pd.read_excel("dataset.xlsx", sheet_name="Sheet1")
 
 # Nettoyage minimal
+def clean_phase(phase):
+    if pd.isna(phase):
+        return ""
+    # Convertir en str, enlever accents, strip et mettre la 1re lettre en majuscule
+    phase = str(phase).strip()
+    phase = unicodedata.normalize("NFKD", phase).encode("ascii", "ignore").decode("utf-8")
+    return phase.capitalize()
+
+df_mission["Phases"] = df_mission["Phases"].apply(clean_phase)
+
 df_mission = df_mission.dropna(subset=["Statut"])
 df_mission["Statut"] = df_mission["Statut"].astype(str).str.strip().str.lower()
 
@@ -33,16 +46,20 @@ st.set_page_config(page_title="Dashboard Suivi de Mission", layout="wide")
 st.title("📊 Dashboard de Suivi des Missions – Clientisgroup")
 
 # Tabs
-tabs = st.tabs(["Vue d’ensemble", "Suivi Opérationnel", "Suivi des Missions"])
+tabs = st.tabs(["Vue d’ensemble", "Suivi Opérationnel", "Suivi des Missions", "➕ Ajouter une mission"])
 
 # Onglet 1 – Vue d'ensemble avec KPI
 with tabs[0]:
     st.subheader("Vue d'ensemble des missions")
-    
+    if "reload_df" in st.session_state and st.session_state["reload_df"]:
+        df_mission = pd.read_excel("dataset.xlsx", sheet_name="Sheet1")
+        st.session_state["reload_df"] = False
+    else:
+        df_mission = pd.read_excel("dataset.xlsx", sheet_name="Sheet1")
     # KPI
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("📌 Nombre de missions", df_mission["Type de Missions"].nunique())
+        st.metric("📌 Nombre de missions", df_mission["ID_Mission"].nunique())
     with col2:
         st.metric("📄 Nombre d'actions", df_mission["Etapes"].shape[0])
     with col3:
@@ -133,7 +150,7 @@ with tabs[0]:
     
     # Édition directe
     st.write("### Tableau de suivi des missions")
-    
+    filtered_df["Approbation Effective"] = pd.to_datetime(filtered_df["Approbation Effective"], errors="coerce")
     edited_df = st.data_editor(
         filtered_df,
         use_container_width=True,
@@ -151,6 +168,14 @@ with tabs[0]:
             ),
             "Commentaires": st.column_config.TextColumn(
                 "Commentaires"
+            ),
+            "Elaboraion Effective": st.column_config.DateColumn(label="Elaboraion Effective", format="YYYY-MM-DD"
+            ),
+            "CTCQ Effective": st.column_config.DateColumn(label="CTCQ Effective", format="YYYY-MM-DD"
+            ),
+            "Approbation Effective": st.column_config.DateColumn(label="Approbation Effective", format="YYYY-MM-DD"
+            ),
+            "Fin Effective": st.column_config.DateColumn(label="Fin Effective", format="YYYY-MM-DD"
             )
         }
     )
@@ -621,6 +646,97 @@ with tabs[2]:
     col_kpi3.metric("✅ Retards_Approbation", f"{nb_appro}", f"{nb_appro/total_missions:.0%}" if total_missions else "0%")
 
     st.dataframe(styled_df, use_container_width=True)
+
+with tabs[3]:
+    st.subheader("📝 Formulaire d'ajout d'une nouvelle mission ou d'une phase")
+    st.markdown(
+        "Remplissez les informations ci-dessous pour créer une nouvelle mission ou ajouter une phase à une mission existante."
+    )
+
+    # Charger les missions existantes pour liste déroulante
+    path_excel = "dataset.xlsx"
+    try:
+        df_exist = pd.read_excel(path_excel)
+        missions_existantes = df_exist["ID_Mission"].dropna().unique().tolist()
+    except Exception:
+        df_exist = pd.DataFrame()
+        missions_existantes = []
+
+    with st.form("ajout_mission_form", clear_on_submit=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Mission_ID à saisir ou choisir
+            mission_id_mode = st.radio("🔗 Choix du mode", ["Créer une nouvelle mission", "Ajouter à une mission existante"])
+            if mission_id_mode == "Ajouter à une mission existante" and missions_existantes:
+                mission_id = st.selectbox("🆔 Sélectionner une mission existante", missions_existantes)
+            else:
+                mission_id = st.text_input("🆕 Créer un nouvel ID de mission")
+
+            type_mission = st.text_input("📌 Type de mission")
+            mission = st.selectbox("📂 Mission", ["CO", "GO", "Inspection", "Évaluation", "Autre"])
+            porteur = st.text_input("👤 Nom du porteur")
+            phase = st.selectbox("📍 Phase", ["Préparation", "Déroulement", "Clôture"])
+            etape = st.text_input("🧩 Étape")
+
+        with col2:
+            livrable = st.text_input("📄 Livrable attendu")
+            date_debut = st.date_input("📅 Date de début")
+            date_elab_prev = st.date_input("📅 Élaboration prévisionnelle")
+            date_ctcq_prev = st.date_input("📅 CTCQ prévisionnelle")
+            date_appro_prev = st.date_input("📅 Approbation prévisionnelle")
+            date_fin_prev = st.date_input("📅 Fin prévisionnelle")
+            #conformite = st.selectbox("✅ Conformité", ["OUI", "NON", "Non Applicable"])
+            #statut = st.selectbox("📊 Statut", ["Non entamé", "En cours", "Bloqué", "Clôturé", "Clôturé avec retard"])
+
+        commentaires = st.text_area("🗒️ Commentaires", "")
+
+        submitted = st.form_submit_button("🔍 Prévisualiser")
+
+    if submitted:
+        if not mission_id.strip():
+            st.error("❌ Veuillez renseigner un identifiant de mission (Mission_ID).")
+        else:
+            st.markdown("### 📋 Aperçu de la ligne à ajouter")
+            import time
+            unique_ref = f"AUTO-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S%f')}"
+            new_row = {
+                "ID_Mission": mission_id.strip(),
+                "Missions": mission,
+                "Type de Missions": type_mission,
+                "Porteurs": porteur,
+                "Phases": phase,
+                "Etapes": etape,
+                "Livrables": livrable,
+                "Début": pd.to_datetime(date_debut),
+                "Elaboration Prévisionnelle": pd.to_datetime(date_elab_prev),
+                "CTCQ Prévisionnelle": pd.to_datetime(date_ctcq_prev),
+                "Approbation Prévisionnelle": pd.to_datetime(date_appro_prev),
+                "Fin Prévisionnelle": pd.to_datetime(date_fin_prev),
+               # "Conformité": conformite,
+                #"Statut": statut,
+                "Commentaires": commentaires,
+                "Ref": unique_ref
+            }
+
+            st.dataframe(pd.DataFrame([new_row]))
+
+            try:
+                df_exist = pd.read_excel(path_excel)
+                df_new = pd.concat([df_exist, pd.DataFrame([new_row])], ignore_index=True)
+            
+                # Vérifier que la ligne est bien ajoutée
+                st.write("Nombre de lignes avant :", df_exist.shape[0])
+                st.write("Nombre de lignes après :", df_new.shape[0])
+            
+                df_new.to_excel(path_excel, index=False)
+                 # Recharge le fichier Excel après insertion pour que l'onglet 0 affiche la version à jour
+                st.session_state["reload_df"] = True
+                st.success("🎉 La mission a bien été ajoutée à la base de données.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erreur lors de l'enregistrement : {e}")
+
 
   
     
