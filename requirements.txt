@@ -7,5 +7,5 @@ textblob
 plotly
 openpyxl
 datetime
-Os
+os
 unicodedata
