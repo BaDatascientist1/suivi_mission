@@ -10,4 +10,3 @@ datetime
 XlsxWriter
 unicodedata
 collections
-re
