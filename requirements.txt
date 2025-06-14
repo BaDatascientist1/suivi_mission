@@ -9,3 +9,4 @@ openpyxl
 datetime
 XlsxWriter
 re
+unicodedata
