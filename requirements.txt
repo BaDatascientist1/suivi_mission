@@ -8,3 +8,6 @@ plotly
 openpyxl
 datetime
 XlsxWriter
+unicodedata
+collections
+re
