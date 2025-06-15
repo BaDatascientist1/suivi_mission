@@ -133,6 +133,8 @@ with tabs[0]:
                               "Date Finalisation Prévisionnelle", "Date Finalisation Effective","Satisfaction Globale","Date Satisfaction Client","Statut Avancement","Nom Client", "Commentaires","Date Facturation","Statut Règlement","Date Règlement","Code Projet Client","Zone Géographique"]
         df_vue = df_mission[colonnes_affichage + ["Ref"]].copy()
         df_vue = df_vue[df_vue["Services"].isin(["Conformité ISO", "Formation"])]
+        #df_vue_affiche = df_vue[ [col for col in colonnes_affichage if col in df_vue.columns] ]
+
         #df_vue = df_vue[[col for col in df_vue.columns if col != "Ref"]]
         # Filtres
         st.write("### Filtres")
@@ -217,20 +219,86 @@ with tabs[0]:
         # Suivi des missions
         st.write("### Tableau de suivi des missions")
         filtered_df["Date Approbation Effective"] = pd.to_datetime(filtered_df["Date Approbation Effective"], errors="coerce")
+        filtered_df["Date Satisfaction Client"] = pd.to_datetime(filtered_df["Date Satisfaction Client"], errors="coerce")
+        filtered_df["Date Facturation"] = pd.to_datetime(filtered_df["Date Facturation"], errors="coerce")
+        filtered_df["Date Règlement"] = pd.to_datetime(filtered_df["Date Règlement"], errors="coerce")
+        filtered_df["Responsable CTCQ"] = filtered_df["Responsable CTCQ"].astype(str)
+        filtered_df["Responsable Elaboration"] = filtered_df["Responsable Elaboration"].astype(str)
+        filtered_df["Responsable Approbation"] = filtered_df["Responsable Approbation"].astype(str)
+        filtered_df["Code Projet Client"] = filtered_df["Code Projet Client"].astype(str)
+        filtered_df["Zone Géographique"] = filtered_df["Zone Géographique"].astype(str)
+        filtered_df["Nom Client"] = filtered_df["Nom Client"].astype(str)
+
+
+
         edited_df = st.data_editor(
             filtered_df,
             use_container_width=True,
             num_rows="dynamic",
-            column_config={
-                "Missions": st.column_config.SelectboxColumn("Missions", options=["CO", "GO", "Inspection", "Évaluation", "Autre"]),
-                "Conformité": st.column_config.SelectboxColumn("Conformité", options=["OUI", "NON", "Non Applicable"]),
-                "Commentaires": st.column_config.TextColumn("Commentaires"),
-                "Elaboraion Effective": st.column_config.DateColumn(label="Elaboraion Effective", format="YYYY-MM-DD"),
-                "CTCQ Effective": st.column_config.DateColumn(label="CTCQ Effective", format="YYYY-MM-DD"),
-                "Approbation Effective": st.column_config.DateColumn(label="Approbation Effective", format="YYYY-MM-DD"),
-                "Fin Effective": st.column_config.DateColumn(label="Fin Effective", format="YYYY-MM-DD")
-            }
-        )
+        column_config={
+            "Ref": st.column_config.TextColumn("Ref", disabled=True, width="small"),
+            "Missions": st.column_config.SelectboxColumn(
+                "Missions", options=["CO", "GO", "Inspection", "Évaluation", "Autre"]
+            ),
+            "Type de Missions": st.column_config.SelectboxColumn(
+                "Type de Missions", options=["CO", "GO", "Inspection", "Évaluation", "Autre"]
+            ),
+            "Conformité": st.column_config.SelectboxColumn(
+                "Conformité", options=["OUI", "NON", "Non Applicable"]
+            ),
+            "Commentaires": st.column_config.TextColumn("Commentaires"),
+            "Date Elaboration Effective": st.column_config.DateColumn(
+                label="Date Elaboration Effective", format="YYYY-MM-DD"
+            ),
+            "Date CTCQ Effective": st.column_config.DateColumn(
+                label="Date CTCQ Effective", format="YYYY-MM-DD"
+            ),
+            "Date Approbation Effective": st.column_config.DateColumn(
+                label="Date Approbation Effective", format="YYYY-MM-DD"
+            ),
+            "Date Finalisation Effective": st.column_config.DateColumn(
+                label="Date Finalisation Effective", format="YYYY-MM-DD"
+            ),
+            "Date Début": st.column_config.DateColumn(
+                label="Date Début", format="YYYY-MM-DD"
+            ),
+            "Date Satisfaction Client": st.column_config.DateColumn(
+                label="Date Satisfaction Client", format="YYYY-MM-DD"
+            ),
+            "Date Facturation": st.column_config.DateColumn(
+                label="Date Facturation", format="YYYY-MM-DD"
+            ),
+            "Date Règlement": st.column_config.DateColumn(
+                label="Date Règlement", format="YYYY-MM-DD"
+            ),
+            "Statut Avancement": st.column_config.SelectboxColumn(
+                "Statut Avancement", options=["Non entamé", "En cours", "Bloqué", "Clôturé", "Clôturé avec retard"]
+            ),
+            "Statut Règlement": st.column_config.SelectboxColumn(
+                "Statut Règlement", options=["Réglé", "En attente", "Partiellement réglé", "Non réglé"]
+            ),
+            "Satisfaction Globale": st.column_config.SelectboxColumn(
+                "Satisfaction Globale", options=["1", "2", "3", "4","5"]
+            ),
+            "Satisfaction Elaboration": st.column_config.SelectboxColumn(
+                "Satisfaction Elaboration", options=["1", "2", "3", "4","5"]
+            ),
+            "Satisfaction CTCQ": st.column_config.SelectboxColumn(
+                "Satisfaction CTCQ", options=["1", "2", "3", "4","5"]
+            ),
+            "Satisfaction Approbation": st.column_config.SelectboxColumn(
+                "Satisfaction Approbation",  options=["1", "2", "3", "4","5"]
+            ),
+            "Code Projet Client": st.column_config.TextColumn("Code Projet Client"),
+            "Zone Géographique": st.column_config.TextColumn("Zone Géographique"),
+            "Responsable Elaboration": st.column_config.TextColumn("Responsable Elaboration"),
+            "Responsable CTCQ": st.column_config.TextColumn("Responsable CTCQ"),
+            "Responsable Approbation": st.column_config.TextColumn("Responsable Approbation"),
+            "Porteurs": st.column_config.TextColumn("Porteurs"),
+            "Services": st.column_config.TextColumn("Services"),
+            "Nom Client": st.column_config.TextColumn("Nom Client")
+        }
+    )
         
         import io
 
