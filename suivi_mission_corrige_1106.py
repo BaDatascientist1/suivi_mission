@@ -1055,13 +1055,13 @@ with tabs[3]:
     st.dataframe(styled_df, use_container_width=True)
     
 
+# Formulaire d'ajout ou modification de mission (simplifié)
 with tabs[4]:
     st.subheader("📝 Formulaire d'ajout d'une nouvelle mission ou d'une phase")
     st.markdown(
         "Remplissez les informations ci-dessous pour créer une nouvelle mission ou ajouter une phase à une mission existante."
     )
 
-    # Charger les missions existantes pour liste déroulante
     path_excel = "dataset.xlsx"
     try:
         df_exist = pd.read_excel(path_excel)
@@ -1074,28 +1074,33 @@ with tabs[4]:
         col1, col2 = st.columns(2)
 
         with col1:
-            # Mission_ID à saisir ou choisir
             mission_id_mode = st.radio("🔗 Choix du mode", ["Créer une nouvelle mission", "Ajouter à une mission existante"])
             if mission_id_mode == "Ajouter à une mission existante" and missions_existantes:
                 mission_id = st.selectbox("🆔 Sélectionner une mission existante", missions_existantes)
             else:
                 mission_id = st.text_input("🆕 Créer un nouvel ID de mission")
 
-            type_mission = st.text_input("📌 Type de mission")
             mission = st.selectbox("📂 Mission", ["CO", "GO", "Inspection", "Évaluation", "Autre"])
+            service = st.selectbox("🏢 Services concernés", ["Formation","Conformité ISO"])
             porteur = st.text_input("👤 Nom du porteur")
             phase = st.selectbox("📍 Phase", ["Préparation", "Déroulement", "Clôture"])
-            etape = st.text_input("🧩 Étape")
+            activite = st.text_input("🧭 Activité")
+            livrable = st.text_input("📄 Livrable attendu")
 
         with col2:
-            livrable = st.text_input("📄 Livrable attendu")
             date_debut = st.date_input("📅 Date de début")
             date_elab_prev = st.date_input("📅 Élaboration prévisionnelle")
             date_ctcq_prev = st.date_input("📅 CTCQ prévisionnelle")
             date_appro_prev = st.date_input("📅 Approbation prévisionnelle")
             date_fin_prev = st.date_input("📅 Fin prévisionnelle")
+            responsable_elab = st.text_input("👤 Responsable Élaboration")
+            responsable_ctcq = st.text_input("👤 Responsable CTCQ")
+            responsable_appro = st.text_input("👤 Responsable Approbation")
+            nom_clt = st.text_input("👤 Nom Client")
+            zone_geo = st.text_input("Zone Géographique")
+
+            #statut = st.selectbox("📊 Statut d'avancement", ["Non entamé", "En cours", "Bloqué", "Clôturé", "Clôturé avec retard"])
             #conformite = st.selectbox("✅ Conformité", ["OUI", "NON", "Non Applicable"])
-            #statut = st.selectbox("📊 Statut", ["Non entamé", "En cours", "Bloqué", "Clôturé", "Clôturé avec retard"])
 
         commentaires = st.text_area("🗒️ Commentaires", "")
 
@@ -1111,39 +1116,42 @@ with tabs[4]:
             new_row = {
                 "ID_Mission": mission_id.strip(),
                 "Missions": mission,
-                "Type de Missions": type_mission,
-                "Porteurs": porteur,
+                "Services": service,
+                "Porteurs": porteur,               
                 "Phases": phase,
-                "Etapes": etape,
+                "Activités": activite,
                 "Livrables": livrable,
-                "Début": pd.to_datetime(date_debut),
-                "Elaboration Prévisionnelle": pd.to_datetime(date_elab_prev),
-                "CTCQ Prévisionnelle": pd.to_datetime(date_ctcq_prev),
-                "Approbation Prévisionnelle": pd.to_datetime(date_appro_prev),
-                "Fin Prévisionnelle": pd.to_datetime(date_fin_prev),
-               # "Conformité": conformite,
-                #"Statut": statut,
+                "Date Début": pd.to_datetime(date_debut),
+                "Date Elaboration Prévisionnelle": pd.to_datetime(date_elab_prev),
+                "Date CTCQ Prévisionnelle": pd.to_datetime(date_ctcq_prev),
+                "Date Approbation Prévisionnelle": pd.to_datetime(date_appro_prev),
+                "Date Finalisation Prévisionnelle": pd.to_datetime(date_fin_prev),
+                "Responsable Elaboration": responsable_elab,
+                "Responsable CTCQ": responsable_ctcq,
+                "Responsable Approbation": responsable_appro,
+                "Nom Client": nom_clt,
+                "Zone Géographique": zone_geo,
+                #"Statut Avancement": statut,
+                #"Conformité": conformite,
                 "Commentaires": commentaires,
                 "Ref": unique_ref
             }
 
             st.dataframe(pd.DataFrame([new_row]))
 
-            try:
-                df_exist = pd.read_excel(path_excel)
-                df_new = pd.concat([df_exist, pd.DataFrame([new_row])], ignore_index=True)
-            
-                # Vérifier que la ligne est bien ajoutée
-                st.write("Nombre de lignes avant :", df_exist.shape[0])
-                st.write("Nombre de lignes après :", df_new.shape[0])
-            
-                df_new.to_excel(path_excel, index=False)
-                 # Recharge le fichier Excel après insertion pour que l'onglet 0 affiche la version à jour
-                st.session_state["reload_df"] = True
-                st.success("🎉 La mission a bien été ajoutée à la base de données.")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Erreur lors de l'enregistrement : {e}")
+            if st.button("✅ Enregistrer la mission"):
+                try:
+                    df_exist = pd.read_excel(path_excel)
+                    df_new = pd.concat([df_exist, pd.DataFrame([new_row])], ignore_index=True)
+                    st.write("Nombre de lignes avant :", df_exist.shape[0])
+                    st.write("Nombre de lignes après :", df_new.shape[0])
+                    df_new.to_excel(path_excel, index=False)
+                    st.session_state["reload_df"] = True
+                    st.success("🎉 La mission a bien été ajoutée à la base de données.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Erreur lors de l'enregistrement : {e}")
+
 
 # Onglet pour les indicateurs de performance clés
    
