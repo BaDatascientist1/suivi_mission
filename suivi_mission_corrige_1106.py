@@ -1055,103 +1055,83 @@ with tabs[3]:
     st.dataframe(styled_df, use_container_width=True)
     
 
-# Formulaire d'ajout ou modification de mission (simplifié)
-with tabs[4]:
-    st.subheader("📝 Formulaire d'ajout d'une nouvelle mission ou d'une phase")
-    st.markdown(
-        "Remplissez les informations ci-dessous pour créer une nouvelle mission ou ajouter une phase à une mission existante."
-    )
-
-    path_excel = "dataset.xlsx"
-    try:
-        df_exist = pd.read_excel(path_excel)
-        missions_existantes = df_exist["ID_Mission"].dropna().unique().tolist()
-    except Exception:
-        df_exist = pd.DataFrame()
-        missions_existantes = []
-
-    with st.form("ajout_mission_form", clear_on_submit=False):
-        col1, col2 = st.columns(2)
-
-        with col1:
-            mission_id_mode = st.radio("🔗 Choix du mode", ["Créer une nouvelle mission", "Ajouter à une mission existante"])
-            if mission_id_mode == "Ajouter à une mission existante" and missions_existantes:
-                mission_id = st.selectbox("🆔 Sélectionner une mission existante", missions_existantes)
-            else:
-                mission_id = st.text_input("🆕 Créer un nouvel ID de mission")
-
-            mission = st.selectbox("📂 Mission", ["CO", "GO", "Inspection", "Évaluation", "Autre"])
-            service = st.selectbox("🏢 Services concernés", ["Formation","Conformité ISO"])
-            porteur = st.text_input("👤 Nom du porteur")
-            phase = st.selectbox("📍 Phase", ["Préparation", "Déroulement", "Clôture"])
-            activite = st.text_input("🧭 Activité")
-            livrable = st.text_input("📄 Livrable attendu")
-
-        with col2:
-            date_debut = st.date_input("📅 Date de début")
-            date_elab_prev = st.date_input("📅 Élaboration prévisionnelle")
-            date_ctcq_prev = st.date_input("📅 CTCQ prévisionnelle")
-            date_appro_prev = st.date_input("📅 Approbation prévisionnelle")
-            date_fin_prev = st.date_input("📅 Fin prévisionnelle")
-            responsable_elab = st.text_input("👤 Responsable Élaboration")
-            responsable_ctcq = st.text_input("👤 Responsable CTCQ")
-            responsable_appro = st.text_input("👤 Responsable Approbation")
-            nom_clt = st.text_input("👤 Nom Client")
-            zone_geo = st.text_input("Zone Géographique")
-
-            #statut = st.selectbox("📊 Statut d'avancement", ["Non entamé", "En cours", "Bloqué", "Clôturé", "Clôturé avec retard"])
-            #conformite = st.selectbox("✅ Conformité", ["OUI", "NON", "Non Applicable"])
-
-        commentaires = st.text_area("🗒️ Commentaires", "")
-
-        submitted = st.form_submit_button("🔍 Prévisualiser")
-
-    if submitted:
-        if not mission_id.strip():
-            st.error("❌ Veuillez renseigner un identifiant de mission (Mission_ID).")
+# ⬇️ FORMULAIRE de saisie (dans le st.form)
+with st.form("ajout_mission_form", clear_on_submit=False):
+    col1, col2 = st.columns(2)
+    with col1:
+        mission_id_mode = st.radio("🔗 Choix du mode", ["Créer une nouvelle mission", "Ajouter à une mission existante"])
+        if mission_id_mode == "Ajouter à une mission existante" and missions_existantes:
+            mission_id = st.selectbox("🆔 Sélectionner une mission existante", missions_existantes)
         else:
-            st.markdown("### 📋 Aperçu de la ligne à ajouter")
-            import time
-            unique_ref = f"AUTO-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S%f')}"
-            new_row = {
-                "ID_Mission": mission_id.strip(),
-                "Missions": mission,
-                "Services": service,
-                "Porteurs": porteur,               
-                "Phases": phase,
-                "Activités": activite,
-                "Livrables": livrable,
-                "Date Début": pd.to_datetime(date_debut),
-                "Date Elaboration Prévisionnelle": pd.to_datetime(date_elab_prev),
-                "Date CTCQ Prévisionnelle": pd.to_datetime(date_ctcq_prev),
-                "Date Approbation Prévisionnelle": pd.to_datetime(date_appro_prev),
-                "Date Finalisation Prévisionnelle": pd.to_datetime(date_fin_prev),
-                "Responsable Elaboration": responsable_elab,
-                "Responsable CTCQ": responsable_ctcq,
-                "Responsable Approbation": responsable_appro,
-                "Nom Client": nom_clt,
-                "Zone Géographique": zone_geo,
-                #"Statut Avancement": statut,
-                #"Conformité": conformite,
-                "Commentaires": commentaires,
-                "Ref": unique_ref
-            }
+            mission_id = st.text_input("🆕 Créer un nouvel ID de mission")
 
-            st.dataframe(pd.DataFrame([new_row]))
+        mission = st.selectbox("📂 Mission", ["CO", "GO", "Inspection", "Évaluation", "Autre"])
+        service = st.selectbox("🏢 Services concernés", ["Formation", "Conformité ISO"])
+        porteur = st.text_input("👤 Nom du porteur")
+        phase = st.selectbox("📍 Phase", ["Préparation", "Déroulement", "Clôture"])
+        activite = st.text_input("🧭 Activité")
+        livrable = st.text_input("📄 Livrable attendu")
 
-            if st.button("✅ Enregistrer la mission"):
-                try:
-                    df_exist = pd.read_excel(path_excel)
-                    df_new = pd.concat([df_exist, pd.DataFrame([new_row])], ignore_index=True)
-                    st.write("Nombre de lignes avant :", df_exist.shape[0])
-                    st.write("Nombre de lignes après :", df_new.shape[0])
-                    df_new.to_excel(path_excel, index=False)
-                    st.session_state["reload_df"] = True
-                    st.success("🎉 La mission a bien été ajoutée à la base de données.")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ Erreur lors de l'enregistrement : {e}")
+    with col2:
+        date_debut = st.date_input("📅 Date de début")
+        date_elab_prev = st.date_input("📅 Élaboration prévisionnelle")
+        date_ctcq_prev = st.date_input("📅 CTCQ prévisionnelle")
+        date_appro_prev = st.date_input("📅 Approbation prévisionnelle")
+        date_fin_prev = st.date_input("📅 Fin prévisionnelle")
+        responsable_elab = st.text_input("👤 Responsable Élaboration")
+        responsable_ctcq = st.text_input("👤 Responsable CTCQ")
+        responsable_appro = st.text_input("👤 Responsable Approbation")
+        nom_clt = st.text_input("👤 Nom Client")
+        zone_geo = st.text_input("Zone Géographique")
 
+    commentaires = st.text_area("🗒️ Commentaires", "")
 
-# Onglet pour les indicateurs de performance clés
+    # Prévisualisation uniquement
+    submitted = st.form_submit_button("🔍 Prévisualiser")
+
+# ⬇️ Si on a cliqué sur Prévisualiser
+if submitted:
+    if not mission_id.strip():
+        st.error("❌ Veuillez renseigner un identifiant de mission.")
+    else:
+        unique_ref = f"AUTO-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S%f')}"
+        new_row = {
+            "ID_Mission": mission_id.strip(),
+            "Missions": mission,
+            "Services": service,
+            "Porteurs": porteur,
+            "Phases": phase,
+            "Activités": activite,
+            "Livrables": livrable,
+            "Date Début": pd.to_datetime(date_debut),
+            "Date Elaboration Prévisionnelle": pd.to_datetime(date_elab_prev),
+            "Date CTCQ Prévisionnelle": pd.to_datetime(date_ctcq_prev),
+            "Date Approbation Prévisionnelle": pd.to_datetime(date_appro_prev),
+            "Date Finalisation Prévisionnelle": pd.to_datetime(date_fin_prev),
+            "Responsable Elaboration": responsable_elab,
+            "Responsable CTCQ": responsable_ctcq,
+            "Responsable Approbation": responsable_appro,
+            "Nom Client": nom_clt,
+            "Zone Géographique": zone_geo,
+            "Commentaires": commentaires,
+            "Ref": unique_ref
+        }
+
+        st.session_state["new_row_preview"] = new_row
+        st.markdown("### 📋 Aperçu de la ligne à enregistrer")
+        st.dataframe(pd.DataFrame([new_row]))
+
+# ⬇️ BOUTON HORS FORMULAIRE pour confirmer l'ajout
+path_excel = "dataset.xlsx"
+if "new_row_preview" in st.session_state:
+    if st.button("✅ Enregistrer la mission"):
+        try:
+            df_exist = pd.read_excel(path_excel)
+            df_new = pd.concat([df_exist, pd.DataFrame([st.session_state["new_row_preview"]])], ignore_index=True)
+            df_new.to_excel(path_excel, index=False)
+            st.success("✅ Mission ajoutée avec succès.")
+            del st.session_state["new_row_preview"]
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Erreur lors de l'enregistrement : {e}")
    
