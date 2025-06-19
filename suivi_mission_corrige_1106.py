@@ -1054,7 +1054,7 @@ with tabs[3]:
     
     st.dataframe(styled_df, use_container_width=True)
     
-
+with tabs[4]:
     # ⬇️ FORMULAIRE de saisie (dans le st.form)
     with st.form("ajout_mission_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
